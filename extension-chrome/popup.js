@@ -132,6 +132,17 @@ async function fetchFigmaNodes(apiKey, fileId, pageId) {
 
   const data = await res.json();
 
+  const pageWording = data.nodes[pageId]; 
+  console.log('data node', pageWording);
+
+  const aiReponse = await fetch('http://localhost:3000/copilot-process', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pageWording })
+  });
+  const aiData = await aiReponse.json();
+  console.log('AI response:', aiData);
+
   console.log('Raw API response:', data);
   if (data.err) {
     throw new FigmaError(`Figma returned an error: ${data.err}`, 'api');
