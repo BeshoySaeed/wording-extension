@@ -1,0 +1,96 @@
+{
+  "dslStartPortal": {
+    "introduction": {
+      "std-headline": "Dein Start-Portal",
+      "text-body": "Wichtig für Dich: Du brauchst den Technik-Service. Du musst also am Anschalttag zuhause sein. Beachte das bitte, wenn Du den Termin bestätigst oder verschiebst."
+    },
+    "nextSteps": {
+      "std-headline": "So geht's für Dich weiter",
+      "stepper": {
+        "steps": {
+          "step1": {
+            "std-headline": "Anschalttag wählen"
+          },
+          "step2": {
+            "std-headline": "Termin wird geprüft"
+          },
+          "step3": {
+            "std-headline": "Step label 3"
+          },
+          "step4": {
+            "std-headline": "Auf Anschaltung warten"
+          },
+          "step5": {
+            "std-headline": "Router einrichten"
+          },
+          "step6": {
+            "std-headline": "MeinVodafone"
+          },
+          "step7": {
+            "std-headline": "Step label 7"
+          }
+        }
+      }
+    },
+    "appointmentFeedback": {
+      "child": {
+        "std-headline": "Dein Wunschtermin klappt leider nicht",
+        "text-body": "Die Telekom hat einen anderen Termin vorgeschlagen. Check bitte, ob er Dir passt. Falls nicht, verschieb ihn.",
+        "content": {
+          "std-headline": "Technik-Service",
+          "text-body": "27.12.22, 8 bis 13 Uhr",
+          "link": {
+            "link-href": "Link label"
+          },
+          "buttons": {
+            "confirm": {
+              "std-headline": "Termin bestätigen"
+            },
+            "reschedule": {
+              "std-headline": "Termin verschieben"
+            },
+            "button3": {
+              "std-headline": "Button label 3"
+            }
+          }
+        }
+      }
+    },
+    "moreInfo": {
+      "std-headline": "Mehr Infos für Dich",
+      "text-body": "Finde hier häufig gestellte Fragen zum DSL-Anschluss.",
+      "accordionGroup": {
+        "accordion": {
+          "questions": {
+            "question1": {
+              "std-headline": "Warum geht die Anschaltung nicht früher?"
+            },
+            "question2": {
+              "std-headline": "Wie geht’s mit dem Technik-Service weiter?"
+            },
+            "question3": {
+              "std-headline": "Wer richtet meinen Router ein?"
+            },
+            "question4": {
+              "std-headline": "Warum wird der Technik-Service der Telekom gebraucht?"
+            },
+            "additionalHeadings": [
+              {
+                "std-headline": "Heading"
+              },
+              {
+                "std-headline": "Heading"
+              },
+              {
+                "std-headline": "Heading"
+              },
+              {
+                "std-headline": "Heading"
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

@@ -15,6 +15,7 @@
   },
   "permissions": [],
   "host_permissions": [
-    "https://api.figma.com/*"
+    "https://api.figma.com/*",
+    "http://localhost:3000/*"
   ]
 }

@@ -111,7 +111,6 @@ function syntaxHighlight(json) {
 async function fetchFigmaNodes(apiKey, fileId, pageId) {
   console.log('Fetching from Figma API with:', { apiKey: '***', fileId, pageId });
   // Encode the page id (colons are valid but let's be safe)
-  console.log('Fetching from Figma API with:', { apiKey: '***', fileId, pageId });
   const encodedId = encodeURIComponent(pageId);
   const url = `https://api.figma.com/v1/files/${fileId}/nodes?ids=${encodedId}`;
 
@@ -131,24 +130,52 @@ async function fetchFigmaNodes(apiKey, fileId, pageId) {
   }
 
   const data = await res.json();
+  const nodeSelector = pageId.replace('-', ':');
+  const selectedNode = data?.nodes?.[nodeSelector];
 
-  const pageWording = data.nodes[pageId]; 
-  console.log('data node', pageWording);
+  if (!selectedNode) {
+    throw new FigmaError('Page not found in response. Check your Page ID.', 'page');
+  }
 
-  const aiReponse = await fetch('http://localhost:3000/copilot-process', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ pageWording })
-  });
-  const aiData = await aiReponse.json();
+  const aiPayload = window.WordingProcessor.createAiPayload(
+    { nodes: { [nodeSelector]: selectedNode } },
+    { fileId, pageId, pageName: data.name }
+  );
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000);
+  let aiData;
+
+  try {
+    const aiReponse = await fetch('http://localhost:3000/copilot-process', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(aiPayload),
+      signal: controller.signal,
+    });
+
+    aiData = await aiReponse.json();
+    if (!aiReponse.ok) {
+      throw new Error(aiData.details || aiData.error || `Copilot server error: HTTP ${aiReponse.status}`);
+    }
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      throw new Error('Copilot server timed out after 30 seconds. Check whether server.js is running and the model request is completing.');
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+
   console.log('AI response:', aiData);
-
-  console.log('Raw API response:', data);
   if (data.err) {
     throw new FigmaError(`Figma returned an error: ${data.err}`, 'api');
   }
 
-  return data;
+  return {
+    pageName: data.name,
+    aiResult: aiData?.response || null
+  };
 }
 
 // Recursively extracts a clean node summary
@@ -210,27 +237,14 @@ async function handleFetch() {
 
   try {
     const result = await fetchFigmaNodes(apiKey, fileId, pageId);
-    
-    // Process wording feature
-    const wordingData = window.WordingProcessor.processWordings(result);
-    
-    const stats = wordingData.stats;
+
     showStatus(
-      `✓ Page "${result.name}" extracted`,
+      `✓ Page "${result.pageName}" processed by AI`,
       false
     );
-    
-    // Show processed wording data
-    showResult(result.pageName, {
-      wording: {
-        stats: stats,
-        keyValuePairs: wordingData.keyValuePairs
-      },
-      rawData: {
-        totalTexts: wordingData.textsArray.length,
-        textsList: wordingData.textsArray
-      }
-    });
+
+    // Show only OpenAI output
+    showResult(result.pageName, result.aiResult || { error: 'Empty AI response' });
   } catch (err) {
     if (err.name === 'TypeError' || err.message.includes('fetch')) {
       showStatus('Network error — check your connection.', true);

@@ -138,9 +138,43 @@ function processWordings(figmaApiResponse) {
   };
 }
 
+/**
+ * Build a compact payload for AI processing.
+ * Keeps only wording-relevant fields to reduce token usage.
+ * @param {Object} figmaApiResponse
+ * @param {Object} options
+ * @returns {Object}
+ */
+function createAiPayload(figmaApiResponse, options = {}) {
+  const wording = processWordings(figmaApiResponse);
+
+  const entries = wording.textsArray
+    .map((item) => ({
+      path: item.path,
+      name: item.name,
+      text: String(item.text || '').trim(),
+      source: item.propertyKey ? 'componentProperty' : 'characters'
+    }))
+    .filter((item) => item.text.length > 0);
+
+  return {
+    page: {
+      fileId: options.fileId || null,
+      pageId: options.pageId || null,
+      pageName: options.pageName || null
+    },
+    stats: {
+      totalTexts: entries.length,
+      processedAt: wording.stats.processedAt
+    },
+    entries
+  };
+}
+
 // Export for use in popup.js
 if (typeof window !== 'undefined') {
   window.WordingProcessor = {
-    processWordings
+    processWordings,
+    createAiPayload
   };
 }

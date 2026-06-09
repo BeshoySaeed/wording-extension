@@ -10,11 +10,11 @@ const host = 'localhost';
 
 require("dotenv").config();
 
-let prompt = `You are a wording processor for frontend localization. 
-Your job is to analyze Figma page JSON responses and extract all visible text content into a structured wording object used in NX translate (i18n) for frontend apps.
+let prompt = `You are a wording processor for frontend localization.
+Your job is to analyze a compact wording payload (already extracted from Figma) and return a structured object for ngx-translate.
 
 ## Your Task
-Given a Figma JSON response, extract all text nodes and organize them into a deeply nested wording object.
+Given compact text entries, organize them into a nested wording object.
 
 ## Rules
 
@@ -37,14 +37,21 @@ Given a Figma JSON response, extract all text nodes and organize them into a dee
 - If a section contains sub-elements, nest them as children
 - Each child can itself have props and/or further children
 
+### Input Shape
+The input includes:
+- page: metadata like pageName, fileId, pageId
+- entries: array of wording entries with path, name, text, source
+- stats: counts/timestamp
+
+Use only these fields. Ignore anything else.
+
 ### What to Skip
-- Navigation components, logos, icons, decorative elements
-- Internal Figma metadata (IDs, style references, component names like "main-nav", "logo-speechmark")
-- Any node that has no visible text content
-- Duplicate/repeated structural wrappers with no text
+- Navigation/header/footer/sidebar labels when they are clearly global chrome
+- Technical labels, placeholders, or duplicated boilerplate text
+- Any empty text
 
 ### Output Format
-Return **only** a valid JSON object — no explanation, no markdown fences, no extra text.
+Return only a valid JSON object. No explanation, no markdown fences, no extra text.
 The top-level key should be a camelCase name that describes the page or section.
 
 ## Example Output Structure
@@ -70,9 +77,9 @@ The top-level key should be a camelCase name that describes the page or section.
 }
 
 ## Input
-Here is the Figma JSON response:
+Here is the compact payload:
 
-[PASTE FIGMA JSON HERE]`
+[PASTE_COMPACT_PAYLOAD_HERE]`
 
 
 const openai = new OpenAI({
@@ -90,24 +97,61 @@ async function run(prompt) {
   return response.choices[0].message.content;
 }
 
+function extractJsonObject(text) {
+  const raw = String(text || '').trim();
+
+  // Strip markdown code fences if the model returns them.
+  const fenced = raw.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+  const candidate = (fenced ? fenced[1] : raw).trim();
+
+  // Try direct parse first.
+  try {
+    return JSON.parse(candidate);
+  } catch (_) {
+    // Fallback: parse the first JSON object substring.
+    const firstBrace = candidate.indexOf('{');
+    const lastBrace = candidate.lastIndexOf('}');
+    if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) {
+      throw new Error('Model response does not contain a JSON object.');
+    }
+
+    const sliced = candidate.slice(firstBrace, lastBrace + 1);
+    return JSON.parse(sliced);
+  }
+}
+
+function setCorsHeaders(res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+}
 
 
 
 server.on('request', (req, res) => {
+    setCorsHeaders(res);
+
+    if (req.url === '/copilot-process' && req.method === 'OPTIONS') {
+        res.writeHead(204);
+        res.end();
+        return;
+    }
+
     if (req.url === '/copilot-process' && req.method === 'POST') {
-        console.log(process.env['GEMINI_API_KEY']);
         let body = '';
         req.on('data', (chunk) => {
             body += chunk;
         });
 
-        console.log('body received:', body);
         req.on('end', async () => {
             try {
-                const fullPrompt = prompt.replace('[PASTE FIGMA JSON HERE]', body);
+            const parsed = JSON.parse(body || '{}');
+            const compactPayload = JSON.stringify(parsed);
+            const fullPrompt = prompt.replace('[PASTE_COMPACT_PAYLOAD_HERE]', compactPayload);
                 const response = await run(fullPrompt);
+            const responseObject = extractJsonObject(response);
                 res.writeHead(200, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ response }));
+            res.end(JSON.stringify({ response: responseObject }));
             } catch (error) {
                 console.error('Error processing request:', error);
                 const statusCode = error?.status || error?.code || 500;
@@ -123,8 +167,11 @@ server.on('request', (req, res) => {
             }
         });
 
-      
-    } 
+            return;
+          }
+
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Not Found' }));
 });
 
 server.listen(port, host, () => {
